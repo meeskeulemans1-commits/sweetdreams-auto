@@ -108,7 +108,10 @@ def write_story(recent_titles, recent_places):
             tool_choice={"type": "auto"},
             messages=[{"role": "user", "content": prompt + feedback}],
         )
-        story = fix(next((b.input for b in msg.content if b.type == "tool_use"), {"title": "", "chapters": []}))
+        raw = next((b.input for b in msg.content if b.type == "tool_use"), {})
+        story = fix(raw)
+        if not story["chapters"]:
+            print(f"[story] stop={msg.stop_reason} blocks={[b.type for b in msg.content]} raw={str(raw)[:700]}", flush=True)
         issues = problems(story)
         print(f"[story] attempt {attempt+1}: {words(story)} words, {len(story['chapters'])} chapters, issues={issues}", flush=True)
         if not issues:
