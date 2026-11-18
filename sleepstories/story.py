@@ -63,7 +63,7 @@ MIN_WORDS, MAX_WORDS = int(os.environ.get("MIN_WORDS", 2200)), int(os.environ.ge
 def _load(x):
     """Het model geeft geneste lijsten soms als JSON-tekst terug; zet ze terug naar echte lijsten."""
     if isinstance(x, str):
-        try: return json.loads(x)
+        try: return json.loads(x, strict=False)
         except ValueError: return []
     return x
 
