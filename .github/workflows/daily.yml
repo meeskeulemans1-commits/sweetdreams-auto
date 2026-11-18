@@ -1,0 +1,70 @@
+name: Dagelijkse slaapverhaal-video
+
+on:
+  schedule:
+    - cron: "17 11 * * *"      # 11:17 UTC = 12:17/13:17 NL; video staat dan om ~14:00 klaar, publicatie om 18:00 NL
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Alleen maken, niet uploaden (testen)"
+        type: boolean
+        default: false
+      mode:
+        description: "Publicatie"
+        type: choice
+        options: [scheduled, public, private]
+        default: scheduled
+
+permissions:
+  contents: write
+
+concurrency:
+  group: daily-video
+  cancel-in-progress: false
+
+jobs:
+  make:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Systeempakketten
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg fonts-dejavu-core
+      - run: pip install -r requirements.txt
+      - name: Stemmodel in cache
+        uses: actions/cache@v4
+        with:
+          path: models
+          key: kokoro-v1.0
+      - name: Video maken en uploaden
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
+          YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
+          YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
+          YT_REFRESH_TOKEN: ${{ secrets.YT_REFRESH_TOKEN }}
+          PUBLISH_MODE: ${{ github.event.inputs.mode || 'scheduled' }}
+        run: |
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then FLAG="--dry-run"; else FLAG=""; fi
+          python -m sleepstories.main $FLAG
+      - name: Testvideo bewaren (alleen bij dry-run)
+        if: ${{ github.event.inputs.dry_run == 'true' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: testvideo
+          path: |
+            work/final.mp4
+            work/thumbnail.jpg
+            work/description.txt
+          retention-days: 2
+      - name: Geschiedenis opslaan
+        if: ${{ github.event.inputs.dry_run != 'true' }}
+        run: |
+          git config user.name "sweetdreams-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add history.json
+          git diff --cached --quiet || (git commit -m "Nieuwe video geregistreerd" && git push)
