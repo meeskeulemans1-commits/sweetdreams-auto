@@ -84,15 +84,15 @@ def write_story(recent_titles, recent_places):
     place = random.choice(pool)
     prompt = (f"Setting for tonight's story: {place}.\n"
               f"Target: 8-9 chapters, about {int((MIN_WORDS+MAX_WORDS)/2)} words in total (this is about 25 minutes when read slowly).\n"
-              f"Make it clearly different from these recent titles: {', '.join(recent_titles[-15:]) or 'none yet'}.")
+              f"Make it clearly different from these recent titles: {', '.join(recent_titles[-15:]) or 'none yet'}.\nDeliver the story by calling the submit_story tool exactly once.")
     feedback = ""
     for attempt in range(4):
         msg = client.messages.create(
             model=MODEL, max_tokens=16000, system=SYSTEM, tools=[TOOL],
-            tool_choice={"type": "tool", "name": "submit_story"},
+            tool_choice={"type": "auto"},
             messages=[{"role": "user", "content": prompt + feedback}],
         )
-        story = next(b.input for b in msg.content if b.type == "tool_use")
+        story = next((b.input for b in msg.content if b.type == "tool_use"), {"title": "", "chapters": []})
         issues = problems(story)
         print(f"[story] attempt {attempt+1}: {words(story)} words, {len(story['chapters'])} chapters, issues={issues}", flush=True)
         if not issues:
