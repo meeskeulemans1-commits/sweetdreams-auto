@@ -1,5 +1,5 @@
 """Verhaal schrijven met de Claude API (gestructureerde uitvoer via tool-use)."""
-import os, random
+import json, os, random
 
 MODEL = os.environ.get("CLAUDE_MODEL", "claude-sonnet-5-5")
 
@@ -60,6 +60,22 @@ TOOL = {
 MIN_WORDS, MAX_WORDS = int(os.environ.get("MIN_WORDS", 2200)), int(os.environ.get("MAX_WORDS", 2900))
 
 
+def _load(x):
+    """Het model geeft geneste lijsten soms als JSON-tekst terug; zet ze terug naar echte lijsten."""
+    if isinstance(x, str):
+        try: return json.loads(x)
+        except ValueError: return []
+    return x
+
+
+def fix(story):
+    story = dict(story)
+    story["chapters"] = [dict(c, paragraphs=_load(c.get("paragraphs", [])), pexels_queries=_load(c.get("pexels_queries", [])))
+                         for c in (_load(c) for c in _load(story.get("chapters", []))) if isinstance(c, dict)]
+    story["tags"] = _load(story.get("tags", []))
+    return story
+
+
 def words(story):
     return sum(len(p.split()) for c in story["chapters"] for p in c["paragraphs"])
 
@@ -92,7 +108,7 @@ def write_story(recent_titles, recent_places):
             tool_choice={"type": "auto"},
             messages=[{"role": "user", "content": prompt + feedback}],
         )
-        story = next((b.input for b in msg.content if b.type == "tool_use"), {"title": "", "chapters": []})
+        story = fix(next((b.input for b in msg.content if b.type == "tool_use"), {"title": "", "chapters": []}))
         issues = problems(story)
         print(f"[story] attempt {attempt+1}: {words(story)} words, {len(story['chapters'])} chapters, issues={issues}", flush=True)
         if not issues:
