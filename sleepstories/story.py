@@ -24,7 +24,7 @@ Style: slow, gentle, sensory (warmth, soft light, quiet sounds, slow breathing),
 no danger, no plot twists, no cliffhangers. The listener is guided slowly through a peaceful place and the story drifts
 toward sleep; the final chapter gets quieter and shorter and ends with the listener drifting off.
 Rules: no brands, no real people, no known fictional characters or places from books/films, no religion or politics,
-no medical claims (never promise to cure insomnia or anxiety), no mention of AI or of YouTube. Do not start with
+no medical claims (never promise to cure insomnia or anxiety), no mention of AI or of YouTube. The video has a soft voice and gentle music only, so never use tags about nature sounds, rain sounds, ASMR or white noise. Do not start with
 'Welcome' (a spoken intro already welcomes the listener). Paragraphs of 40-90 words, every chapter 5-7 paragraphs.
 Chapter search phrases: 5 concrete English search phrases (1-3 words) for REAL stock footage that fits that chapter
 (nature, water, night sky, candles, rain, snow, trains, cozy interiors, lights). No people close-ups, no text, no logos.
@@ -44,6 +44,7 @@ QUERIES: <5 stock footage search phrases separated by |>
 (blank line between paragraphs; then the next chapter starts with a new line '=== CHAPTER: ...')"""
 
 MIN_WORDS, MAX_WORDS = int(os.environ.get("MIN_WORDS", 2000)), int(os.environ.get("MAX_WORDS", 3000))
+MIN_CH, MAX_CH = int(os.environ.get("MIN_CH", 7)), int(os.environ.get("MAX_CH", 10))
 
 
 def words(story):
@@ -84,7 +85,7 @@ def problems(story):
     if not story["summary"]: out.append("missing SUMMARY line")
     if len(story["tags"]) < 8: out.append("TAGS line needs 12-16 comma-separated tags")
     n = len(story["chapters"])
-    if not 7 <= n <= 10: out.append(f"{n} chapters (need 8-9, each starting with a line '=== CHAPTER: title')")
+    if not MIN_CH <= n <= MAX_CH: out.append(f"{n} chapters (need {MIN_CH + 1}-{MAX_CH - 1}, each starting with a line '=== CHAPTER: title')")
     w = words(story)
     if w < MIN_WORDS: out.append(f"only {w} words, need {MIN_WORDS}-{MAX_WORDS}: make every paragraph and chapter longer")
     if w > MAX_WORDS: out.append(f"{w} words, need {MIN_WORDS}-{MAX_WORDS}: shorten")
@@ -101,7 +102,7 @@ def write_story(recent_titles, recent_places):
     pool = [p for p in PLACES if p not in recent_places] or PLACES
     place = random.choice(pool)
     prompt = (f"Setting for tonight's story: {place}.\n"
-              f"Target: 8-9 chapters, about {int((MIN_WORDS+MAX_WORDS)/2)} words in total (this is about 25 minutes when read slowly).\n"
+              f"Target: {MIN_CH + 1}-{MAX_CH - 1} chapters, about {int((MIN_WORDS+MAX_WORDS)/2)} words in total (about {int((MIN_WORDS+MAX_WORDS)/2/100)} minutes when read slowly).\n"
               f"Make it clearly different from these recent titles: {', '.join(recent_titles[-15:]) or 'none yet'}.")
     feedback = ""
     for attempt in range(5):
