@@ -41,7 +41,7 @@ def main():
     else: story = S.write_story([v["title"] for v in hist["videos"]], [v.get("place", "") for v in hist["videos"][-20:]])
     json.dump(story, open(os.path.join(work, "story.json"), "w"), indent=1)
     title = story["title"]
-    full_title = f"{title} | Calm Sleep Story for Deep Sleep (Soft Voice, {story['title_keywords']})"
+    full_title = f"{title} | Calm Sleep Story for Deep Sleep (Soft Voice, Gentle Music)"
     print("[main] titel:", full_title, flush=True)
 
     tm = tts.synthesize(story, work)
@@ -57,7 +57,7 @@ def main():
     dur = float(subprocess.check_output(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", final]))
     intro_len = float(subprocess.check_output(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", "assets/intro.mp4"]))
     print(f"[main] eindvideo {dur/60:.1f} min, {os.path.getsize(final)/1e6:.0f} MB", flush=True)
-    if not float(os.environ.get("MIN_MINUTES", 15)) * 60 <= dur <= 35 * 60: sys.exit(f"Lengte {dur/60:.1f} min ligt buiten bereik; niet uploaden")
+    if not float(os.environ.get("MIN_MINUTES", 15)) * 60 <= dur <= float(os.environ.get("MAX_MINUTES", 35)) * 60: sys.exit(f"Lengte {dur/60:.1f} min ligt buiten bereik; niet uploaden")
     thumbp = thumb.make(os.path.join(work, "thumbnail.jpg"), [[(c[0], c[1], c[2]) for c in ch] for ch in clips], title)
     desc = description(story, tm["starts"], intro_len, dur)
     tags = story["tags"]
