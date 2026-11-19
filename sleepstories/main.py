@@ -41,7 +41,7 @@ def main():
     else: story = S.write_story([v["title"] for v in hist["videos"]], [v.get("place", "") for v in hist["videos"][-20:]])
     json.dump(story, open(os.path.join(work, "story.json"), "w"), indent=1)
     title = story["title"]
-    full_title = f"{title} | Calm Sleep Story for Deep Sleep (Soft Voice, Gentle Music)"
+    full_title = f"{title} | {({'45': '45 Minute', '60': '1 Hour'}.get(os.environ.get('LONG_MINUTES', '0'), 'Calm'))} Sleep Story for Deep Sleep (Soft Voice, Gentle Music)"
     print("[main] titel:", full_title, flush=True)
 
     tm = tts.synthesize(story, work)
