@@ -58,7 +58,7 @@ jobs:
           if [ "$LONG_MINUTES" = "45" ]; then export MIN_WORDS=4300 MAX_WORDS=5300 MIN_CH=13 MAX_CH=20 MIN_MINUTES=38 MAX_MINUTES=62; fi
           if [ "$LONG_MINUTES" = "60" ]; then export MIN_WORDS=5700 MAX_WORDS=6700 MIN_CH=16 MAX_CH=24 MIN_MINUTES=50 MAX_MINUTES=80; fi
           if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then FLAG="--dry-run"; else FLAG=""; fi
-          python -m sleepstories.main $FLAG
+          python -m sleepstories.main $FLAG $([ "${{ github.event_name }}" = "workflow_dispatch" ] && echo --force)
       - name: Testvideo bewaren (alleen bij dry-run)
         if: ${{ github.event.inputs.dry_run == 'true' }}
         uses: actions/upload-artifact@v4
