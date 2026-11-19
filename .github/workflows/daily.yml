@@ -2,7 +2,7 @@ name: Dagelijkse slaapverhaal-video
 
 on:
   schedule:
-    - cron: "17 11 * * *"      # 11:17 UTC = 12:17/13:17 NL; video staat dan om ~14:00 klaar, publicatie om 18:00 NL
+    - cron: "17 11,13 * * *"      # 11:17 en 13:17 UTC; de tweede run doet niets als de eerste is gelukt
   workflow_dispatch:
     inputs:
       dry_run:
@@ -38,7 +38,7 @@ jobs:
           python-version: "3.11"
           cache: pip
       - name: Systeempakketten
-        run: sudo apt-get update && sudo apt-get install -y ffmpeg fonts-dejavu-core
+        run: for i in 1 2 3; do sudo apt-get update && sudo apt-get install -y ffmpeg fonts-dejavu-core && exit 0; sleep 30; done; exit 1
       - run: pip install -r requirements.txt
       - name: Stemmodel in cache
         uses: actions/cache@v4
