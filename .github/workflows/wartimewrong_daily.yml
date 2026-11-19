@@ -1,0 +1,48 @@
+name: Dagelijkse Wartime Wrong-upload
+
+on:
+  schedule:
+    - cron: "5 9 * * *"      # 09:05 UTC = 10:05/11:05 NL; uploadt wat vandaag gepland staat (Short 18:00, lange video 21:00 NL)
+  workflow_dispatch:
+    inputs:
+      date:
+        description: "Datum JJJJ-MM-DD (leeg = vandaag)"
+        required: false
+      dry_run:
+        description: "Alleen tonen wat er geupload zou worden"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ww-daily
+  cancel-in-progress: false
+
+jobs:
+  upload:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install google-api-python-client google-auth
+      - name: Uploaden naar YouTube
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
+          YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
+          YT_REFRESH_TOKEN: ${{ secrets.YT_REFRESH_TOKEN_WW }}
+          IN_DATE: ${{ github.event.inputs.date }}
+          IN_DRY: ${{ github.event.inputs.dry_run }}
+        run: python wartimewrong_daily.py "$IN_DATE" "$IN_DRY"
+      - name: Overzicht opslaan
+        run: |
+          git config user.name "wartimewrong-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add ww_uploaded.json 2>/dev/null || true
+          git diff --cached --quiet || (git commit -m "Wartime Wrong: uploads geregistreerd" && git pull --rebase && git push)
