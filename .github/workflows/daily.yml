@@ -14,6 +14,11 @@ on:
         type: choice
         options: [scheduled, public, private]
         default: scheduled
+      minutes:
+        description: "Lengte van het verhaal (45 of 60 voor een lange testvideo; 0 = normaal, ongeveer 22 minuten)"
+        type: choice
+        options: ["0", "45", "60"]
+        default: "0"
 
 permissions:
   contents: write
@@ -48,10 +53,12 @@ jobs:
           YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
           YT_REFRESH_TOKEN: ${{ secrets.YT_REFRESH_TOKEN }}
           PUBLISH_MODE: ${{ github.event.inputs.mode || 'scheduled' }}
+          LONG_MINUTES: ${{ github.event.inputs.minutes || '0' }}
         run: |
+          if [ "$LONG_MINUTES" = "45" ]; then export MIN_WORDS=4300 MAX_WORDS=5300 MIN_CH=13 MAX_CH=20 MIN_MINUTES=38 MAX_MINUTES=62; fi
+          if [ "$LONG_MINUTES" = "60" ]; then export MIN_WORDS=5700 MAX_WORDS=6700 MIN_CH=16 MAX_CH=24 MIN_MINUTES=50 MAX_MINUTES=80; fi
           if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then FLAG="--dry-run"; else FLAG=""; fi
-          python -m sleepstories.main $FLAG $([ "${{ github.event_name }}" = "workflow_dispatch" ] && echo --force)
-
+          python -m sleepstories.main $FLAG
       - name: Testvideo bewaren (alleen bij dry-run)
         if: ${{ github.event.inputs.dry_run == 'true' }}
         uses: actions/upload-artifact@v4
