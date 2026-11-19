@@ -50,7 +50,8 @@ jobs:
           PUBLISH_MODE: ${{ github.event.inputs.mode || 'scheduled' }}
         run: |
           if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then FLAG="--dry-run"; else FLAG=""; fi
-          python -m sleepstories.main $FLAG
+          python -m sleepstories.main $FLAG $([ "${{ github.event_name }}" = "workflow_dispatch" ] && echo --force)
+
       - name: Testvideo bewaren (alleen bij dry-run)
         if: ${{ github.event.inputs.dry_run == 'true' }}
         uses: actions/upload-artifact@v4
