@@ -77,8 +77,8 @@ jobs:
         working-directory: trr
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
-          YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
+          YT_CLIENT_ID: ${{ secrets.TRR_CLIENT_ID || secrets.YT_CLIENT_ID }}
+          YT_CLIENT_SECRET: ${{ secrets.TRR_CLIENT_SECRET || secrets.YT_CLIENT_SECRET }}
           TRR_REFRESH_TOKEN: ${{ secrets.TRR_REFRESH_TOKEN }}
           PUBLISH_MODE: ${{ github.event.inputs.mode || 'scheduled' }}
           NODE_PATH: ${{ github.workspace }}/trr/node_modules
