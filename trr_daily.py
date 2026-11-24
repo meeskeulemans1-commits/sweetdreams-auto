@@ -28,7 +28,7 @@ def service():
 
 def main():
     ap = argparse.ArgumentParser(); ap.add_argument("--lookahead", type=int, default=2); ap.add_argument("--max", type=int, default=6)
-    ap.add_argument("--dry-run", action="store_true"); a = ap.parse_args()
+    ap.add_argument("--dry-run", action="store_true"); ap.add_argument("--today", default=""); a = ap.parse_args()
     done = json.load(open(DONE)) if os.path.exists(DONE) else {}
     now = dt.datetime.now(NL); horizon = now.date() + dt.timedelta(days=a.lookahead)
     work = tempfile.mkdtemp(); items = []
@@ -43,6 +43,12 @@ def main():
             except Exception: continue
             if "publish_date" in it and "video" in it: it["_tag"] = tag; it["_dir"] = d; items.append(it)
     items.sort(key=lambda i: (i["publish_date"], i.get("publish_time", "00:00")))
+    if a.today:  # extra Shorts vandaag: pak de laatste nog niet geplande Shorts uit de voorraad en zet ze op vandaag
+        tijden = [t.strip() for t in a.today.split(",") if t.strip()]
+        pool = [i for i in items if i["id"] not in done and i["title"].rstrip().endswith("#shorts")]
+        for it, t in zip(reversed(pool[-len(tijden):]), reversed(tijden)):
+            it["publish_date"] = now.date().isoformat(); it["publish_time"] = t; print("VANDAAG:", it["id"], t)
+        items.sort(key=lambda i: (i["publish_date"], i.get("publish_time", "00:00")))
     todo = []
     for it in items:
         when = dt.datetime.fromisoformat(f"{it['publish_date']}T{it.get('publish_time', '18:00')}:00").replace(tzinfo=NL)
