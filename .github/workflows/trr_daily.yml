@@ -1,0 +1,40 @@
+name: TRR plannen
+on:
+  schedule:
+    - cron: "10 8 * * *"      # elke dag 09:10/10:10 NL
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Alleen tonen, niet uploaden"
+        type: boolean
+        default: true
+      max:
+        description: "Maximaal aantal uploads"
+        default: "6"
+permissions:
+  contents: write
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install google-api-python-client google-auth
+      - name: Plannen
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TRR_CLIENT_ID: ${{ secrets.TRR_CLIENT_ID }}
+          TRR_CLIENT_SECRET: ${{ secrets.TRR_CLIENT_SECRET }}
+          YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
+          YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
+          TRR_REFRESH_TOKEN: ${{ secrets.TRR_REFRESH_TOKEN }}
+        run: |
+          ARGS="--max ${{ github.event.inputs.max || '6' }}"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ github.event.inputs.dry_run }}" = "true" ]; then ARGS="$ARGS --dry-run"; fi
+          python trr_daily.py $ARGS
+      - name: Voortgang opslaan
+        run: |
+          git config user.name github-actions; git config user.email actions@github.com
+          git add trr_uploaded.json 2>/dev/null || true
+          git diff --cached --quiet || (git commit -m "trr_uploaded bijgewerkt" && git push)
