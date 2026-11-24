@@ -10,7 +10,10 @@ on:
         default: true
       max:
         description: "Maximaal aantal uploads"
-        default: "6"
+        default: "5"
+      today:
+        description: "Extra Shorts vandaag, tijden NL (bijv. 19:30,21:00)"
+        default: ""
 permissions:
   contents: write
 jobs:
@@ -32,6 +35,7 @@ jobs:
         run: |
           ARGS="--max ${{ github.event.inputs.max || '6' }}"
           if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ github.event.inputs.dry_run }}" = "true" ]; then ARGS="$ARGS --dry-run"; fi
+          if [ -n "${{ github.event.inputs.today }}" ]; then ARGS="$ARGS --today ${{ github.event.inputs.today }}"; fi
           python trr_daily.py $ARGS
       - name: Voortgang opslaan
         run: |
