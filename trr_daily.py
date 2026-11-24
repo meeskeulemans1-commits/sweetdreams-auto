@@ -32,8 +32,11 @@ def main():
     done = json.load(open(DONE)) if os.path.exists(DONE) else {}
     now = dt.datetime.now(NL); horizon = now.date() + dt.timedelta(days=a.lookahead)
     work = tempfile.mkdtemp(); items = []
-    for rel in json.loads(sh("gh", "release", "list", "--json", "tagName", "--limit", "100")):
-        tag = rel["tagName"]; d = os.path.join(work, tag); os.makedirs(d)
+    seen = set()
+    for rel in json.loads(sh("gh", "release", "list", "--json", "tagName,isDraft", "--limit", "100")):
+        tag = rel["tagName"]
+        if rel.get("isDraft") or tag in seen: continue
+        seen.add(tag); d = os.path.join(work, tag); os.makedirs(d, exist_ok=True)
         subprocess.run(["gh", "release", "download", tag, "-p", "*.json", "-D", d], capture_output=True)
         for p in glob.glob(d + "/*.json"):
             try: it = json.load(open(p))
