@@ -71,7 +71,11 @@ def main():
             if f: subprocess.run(["gh", "release", "download", it["_tag"], "-p", f, "-D", it["_dir"]], check=True)
         body = {"snippet": {"title": it["title"][:100], "description": it["description"][:4900], "tags": it.get("tags", []), "categoryId": "27"},
                 "status": {"privacyStatus": "private", "publishAt": pub, "selfDeclaredMadeForKids": False}}
-        r = yt.videos().insert(part="snippet,status", body=body, media_body=MediaFileUpload(os.path.join(it["_dir"], it["video"]), chunksize=-1, resumable=True)).execute()
+        try:
+            r = yt.videos().insert(part="snippet,status", body=body, media_body=MediaFileUpload(os.path.join(it["_dir"], it["video"]), chunksize=-1, resumable=True)).execute()
+        except Exception as e:
+            if "uploadLimitExceeded" in str(e): print("UPLOADLIMIET bereikt, stoppen voor vandaag; de rest volgt morgen"); break
+            print("UPLOAD MISLUKT:", it["id"], str(e)[:200]); continue
         vid = r["id"]; print("   video-id", vid)
         th = os.path.join(it["_dir"], it.get("thumbnail", "")) if it.get("thumbnail") else None
         if th and os.path.exists(th):
