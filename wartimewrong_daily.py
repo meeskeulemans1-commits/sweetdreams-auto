@@ -29,6 +29,7 @@ def find_items(day, done):
     items = []
     tags = [r["tagName"] for r in json.loads(run("gh", "release", "list", "--limit", "50", "--json", "tagName").stdout)]
     for tag in tags:
+        if tag.lower().startswith("trr"): continue   # TRR-releases horen bij een ander kanaal
         d = f"dl/{tag}"; os.makedirs(d, exist_ok=True)
         run("gh", "release", "download", tag, "-p", "*.json", "-D", d, "--clobber", check=False)
         for f in sorted(glob.glob(d + "/*.json")):
