@@ -32,16 +32,23 @@ def main():
     done = json.load(open(DONE)) if os.path.exists(DONE) else {}
     now = dt.datetime.now(NL); horizon = now.date() + dt.timedelta(days=a.lookahead)
     work = tempfile.mkdtemp(); items = []
-    seen = set()
+    seen = set(); ov = {}
     for rel in json.loads(sh("gh", "release", "list", "--json", "tagName,isDraft", "--limit", "100")):
         tag = rel["tagName"]
-        if rel.get("isDraft") or tag in seen: continue
+        if rel.get("isDraft") or tag in seen or not tag.lower().startswith("trr"): continue  # alleen TRR-releases (tag begint met trr)
         seen.add(tag); d = os.path.join(work, tag); os.makedirs(d, exist_ok=True)
         subprocess.run(["gh", "release", "download", tag, "-p", "*.json", "-D", d], capture_output=True)
         for p in glob.glob(d + "/*.json"):
             try: it = json.load(open(p))
             except Exception: continue
-            if "publish_date" in it and "video" in it: it["_tag"] = tag; it["_dir"] = d; items.append(it)
+            if isinstance(it, dict) and "overrides" in it:  # nieuwste release wint: {"overrides": {id: {"publish_date":..., "publish_time":...}}}
+                for k, v in it["overrides"].items(): ov.setdefault(k, v)
+            elif "publish_date" in it and "video" in it: it["_tag"] = tag; it["_dir"] = d; items.append(it)
+    uniq = {}
+    for it in items: uniq.setdefault(it["id"], it)  # releases staan nieuwste eerst: de nieuwste versie van een id wint
+    items = list(uniq.values())
+    for it in items:
+        if it["id"] in ov: it.update({k: v for k, v in ov[it["id"]].items() if k in ("publish_date", "publish_time")}); print("OVERRIDE:", it["id"], ov[it["id"]])
     items.sort(key=lambda i: (i["publish_date"], i.get("publish_time", "00:00")))
     if a.today:  # extra Shorts vandaag: pak de laatste nog niet geplande Shorts uit de voorraad en zet ze op vandaag
         tijden = [t.strip() for t in a.today.split(",") if t.strip()]
