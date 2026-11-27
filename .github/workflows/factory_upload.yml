@@ -31,13 +31,23 @@ jobs:
     concurrency:
       group: factory-${{ matrix.channel }}
       cancel-in-progress: false
-    if: github.event_name != 'workflow_dispatch' || github.event.inputs.channel == 'all' || github.event.inputs.channel == matrix.channel
     steps:
+      - name: Moet dit kanaal nu draaien?
+        id: chk
+        env:
+          EV: ${{ github.event_name }}
+          IN_CH: ${{ github.event.inputs.channel }}
+        run: |
+          if [ "$EV" != "workflow_dispatch" ] || [ "$IN_CH" = "all" ] || [ "$IN_CH" = "${{ matrix.channel }}" ]; then echo "run=true" >> $GITHUB_OUTPUT; else echo "run=false" >> $GITHUB_OUTPUT; fi
       - uses: actions/checkout@v4
+        if: steps.chk.outputs.run == 'true'
       - uses: actions/setup-python@v5
+        if: steps.chk.outputs.run == 'true'
         with: { python-version: "3.12" }
-      - run: pip install google-api-python-client google-auth
+      - if: steps.chk.outputs.run == 'true'
+        run: pip install google-api-python-client google-auth
       - name: Uploaden en plannen
+        if: steps.chk.outputs.run == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           TRR_CLIENT_ID: ${{ secrets.TRR_CLIENT_ID }}
@@ -54,7 +64,7 @@ jobs:
           if [ -n "$IN_MAX" ]; then ARGS="$ARGS --max $IN_MAX"; fi
           python -m factory.upload ${{ matrix.channel }} $ARGS
       - name: Voortgang opslaan
-        if: always()
+        if: always() && steps.chk.outputs.run == 'true'
         run: |
           git config user.name "kanaalfabriek-bot"; git config user.email "bot@users.noreply.github.com"
           git add state/ 2>/dev/null || true
