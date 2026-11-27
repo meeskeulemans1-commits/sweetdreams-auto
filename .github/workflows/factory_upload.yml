@@ -1,0 +1,64 @@
+name: Kanaalfabriek - uploaden en plannen
+
+on:
+  schedule:
+    - cron: "10 7 * * *"     # 08:10/09:10 NL
+    - cron: "40 15 * * *"    # tweede ronde, pakt wat bleef liggen (uploadlimiet) of net is klaargezet
+  workflow_dispatch:
+    inputs:
+      channel:
+        description: "Kanaal (all, trr, ww)"
+        default: "all"
+      dry_run:
+        description: "Alleen tonen, niet uploaden"
+        type: boolean
+        default: true
+      max:
+        description: "Maximaal aantal uploads per kanaal (leeg = standaard)"
+        default: ""
+
+permissions:
+  contents: write
+
+jobs:
+  upload:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        channel: [trr, ww]
+    concurrency:
+      group: factory-${{ matrix.channel }}
+      cancel-in-progress: false
+    if: github.event_name != 'workflow_dispatch' || github.event.inputs.channel == 'all' || github.event.inputs.channel == matrix.channel
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install google-api-python-client google-auth
+      - name: Uploaden en plannen
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TRR_CLIENT_ID: ${{ secrets.TRR_CLIENT_ID }}
+          TRR_CLIENT_SECRET: ${{ secrets.TRR_CLIENT_SECRET }}
+          YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
+          YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
+          TRR_REFRESH_TOKEN: ${{ secrets.TRR_REFRESH_TOKEN }}
+          YT_REFRESH_TOKEN_WW: ${{ secrets.YT_REFRESH_TOKEN_WW }}
+          IN_DRY: ${{ github.event.inputs.dry_run }}
+          IN_MAX: ${{ github.event.inputs.max }}
+        run: |
+          ARGS=""
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "$IN_DRY" = "true" ]; then ARGS="$ARGS --dry-run"; fi
+          if [ -n "$IN_MAX" ]; then ARGS="$ARGS --max $IN_MAX"; fi
+          python -m factory.upload ${{ matrix.channel }} $ARGS
+      - name: Voortgang opslaan
+        if: always()
+        run: |
+          git config user.name "kanaalfabriek-bot"; git config user.email "bot@users.noreply.github.com"
+          git add state/ 2>/dev/null || true
+          if ! git diff --cached --quiet; then
+            git commit -m "state ${{ matrix.channel }} bijgewerkt"
+            for i in 1 2 3; do git pull --rebase -q && git push -q && break || sleep 5; done
+          fi

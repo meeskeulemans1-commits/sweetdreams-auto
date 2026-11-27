@@ -1,9 +1,6 @@
 name: TheRealReasonBehindThings - dagelijkse Shorts
 
 on:
-  schedule:
-    - cron: "30 9 * * *"     # maakt een Short, gepland om 18:00 NL
-    - cron: "30 13 * * *"    # maakt een Short, gepland om 21:00 NL
   workflow_dispatch:
     inputs:
       dry_run:

@@ -1,7 +1,5 @@
 name: TRR plannen
 on:
-  schedule:
-    - cron: "10 8 * * *"      # elke dag 09:10/10:10 NL
   workflow_dispatch:
     inputs:
       dry_run:

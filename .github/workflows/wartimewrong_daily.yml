@@ -1,8 +1,6 @@
 name: Dagelijkse Wartime Wrong-upload
 
 on:
-  schedule:
-    - cron: "5 9 * * *"      # 09:05 UTC = 10:05/11:05 NL; uploadt wat vandaag gepland staat (Short 18:00, lange video 21:00 NL)
   workflow_dispatch:
     inputs:
       date:

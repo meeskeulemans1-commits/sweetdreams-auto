@@ -1,0 +1,26 @@
+{
+  "trr": {
+    "name": "TheRealReasonBehindThings",
+    "tz": "Europe/Amsterdam",
+    "language": "en",
+    "category": "27",
+    "refresh_env": "TRR_REFRESH_TOKEN",
+    "clients": [["TRR_CLIENT_ID", "TRR_CLIENT_SECRET"], ["YT_CLIENT_ID", "YT_CLIENT_SECRET"]],
+    "slots": {"short": "18:00", "long": "15:00"},
+    "release_prefix": "trr",
+    "max_per_run": 6,
+    "lookahead_days": 2
+  },
+  "ww": {
+    "name": "Wartime Wrong",
+    "tz": "Europe/Amsterdam",
+    "language": "en",
+    "category": "27",
+    "refresh_env": "YT_REFRESH_TOKEN_WW",
+    "clients": [["YT_CLIENT_ID", "YT_CLIENT_SECRET"]],
+    "slots": {"short": "18:00", "long": "21:00"},
+    "release_prefix": null,
+    "max_per_run": 4,
+    "lookahead_days": 2
+  }
+}
