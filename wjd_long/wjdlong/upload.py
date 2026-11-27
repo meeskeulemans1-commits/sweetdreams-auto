@@ -1,0 +1,35 @@
+"""Upload naar YouTube (Data API v3) voor het WistJeDatDieren-kanaal."""
+import os, datetime as dt
+from zoneinfo import ZoneInfo
+from google.oauth2.credentials import Credentials
+from googleapiclient.discovery import build
+from googleapiclient.http import MediaFileUpload
+
+
+def service():
+    creds = Credentials(None, refresh_token=os.environ["WJD_YT_REFRESH_TOKEN"], token_uri="https://oauth2.googleapis.com/token",
+                        client_id=os.environ["YT_CLIENT_ID"], client_secret=os.environ["YT_CLIENT_SECRET"], scopes=["https://www.googleapis.com/auth/youtube.upload"])
+    return build("youtube", "v3", credentials=creds, cache_discovery=False)
+
+
+def next_publish_utc(hour=17, tz="Europe/Amsterdam"):
+    z = ZoneInfo(tz); now = dt.datetime.now(z); t = now.replace(hour=hour, minute=0, second=0, microsecond=0)
+    if t <= now + dt.timedelta(minutes=20): t += dt.timedelta(days=1)
+    return t.astimezone(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.000Z")
+
+
+def upload(video, thumb, title, description, tags, mode="scheduled"):
+    yt = service(); status = {"selfDeclaredMadeForKids": False, "embeddable": True}
+    if mode == "public": status["privacyStatus"] = "public"
+    elif mode == "private": status["privacyStatus"] = "private"
+    else: status["privacyStatus"] = "private"; status["publishAt"] = next_publish_utc()
+    body = {"snippet": {"title": title[:100], "description": description[:4900], "tags": tags[:30], "categoryId": "15", "defaultLanguage": "nl", "defaultAudioLanguage": "nl"}, "status": status}
+    req = yt.videos().insert(part="snippet,status", body=body, media_body=MediaFileUpload(video, chunksize=32 * 1024 * 1024, resumable=True, mimetype="video/mp4"))
+    resp = None
+    while resp is None:
+        st, resp = req.next_chunk()
+        if st: print(f"[upload] {int(st.progress() * 100)}%", flush=True)
+    vid = resp["id"]; real = resp.get("status", {}); print(f"[upload] klaar: https://youtu.be/{vid} status={real.get('privacyStatus')} publishAt={real.get('publishAt')}", flush=True)
+    try: yt.thumbnails().set(videoId=vid, media_body=MediaFileUpload(thumb, mimetype="image/jpeg")).execute(); print("[upload] thumbnail gezet", flush=True)
+    except Exception as e: print("[upload] thumbnail mislukt:", str(e)[:200], flush=True)
+    return vid, real

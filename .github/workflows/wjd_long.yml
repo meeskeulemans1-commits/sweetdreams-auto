@@ -52,11 +52,10 @@ jobs:
           PUBLISH_MODE: ${{ github.event.inputs.mode || 'scheduled' }}
           THEME: ${{ github.event.inputs.theme }}
         run: |
-          ARGS=()
-          [ "${{ github.event.inputs.dry_run }}" = "true" ] && ARGS+=(--dry-run)
-          [ "${{ github.event_name }}" = "workflow_dispatch" ] && ARGS+=(--force)
-          [ -n "$THEME" ] && ARGS+=(--theme "$THEME")
-          python -m wjdlong.main "${ARGS[@]}"
+          if [ "${{ github.event.inputs.dry_run }}" != "true" ] && [ -z "$WJD_YT_REFRESH_TOKEN" ]; then echo "::warning::Secret WJD_YT_REFRESH_TOKEN ontbreekt: nog niet ingelogd op het WistJeDatDieren-kanaal; overgeslagen"; exit 0; fi
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then FLAG="--dry-run"; else FLAG=""; fi
+          if [ -n "$THEME" ]; then T="--theme"; else T=""; fi
+          python -m wjdlong.main $FLAG $([ "${{ github.event_name }}" = "workflow_dispatch" ] && echo --force) $T ${THEME:+"$THEME"}
       - name: Testvideo bewaren (alleen bij dry-run)
         if: ${{ github.event.inputs.dry_run == 'true' }}
         uses: actions/upload-artifact@v4
@@ -73,5 +72,5 @@ jobs:
         run: |
           git config user.name "wjd-bot"
           git config user.email "bot@users.noreply.github.com"
-          git add wjd_long/wjd_long_history.json
+          git add wjd_long/wjd_long_history.json 2>/dev/null || true
           git diff --cached --quiet || (git commit -m "Lange video geregistreerd" && git push)

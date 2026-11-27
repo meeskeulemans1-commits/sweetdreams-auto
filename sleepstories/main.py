@@ -1,8 +1,18 @@
 """Dagelijkse run: verhaal -> stem -> beeld -> video -> upload."""
-import argparse, datetime as dt, json, os, shutil, subprocess, sys
+import argparse, datetime as dt, glob, json, os, shutil, subprocess, sys
 from . import story as S, tts, ambient, footage, render, thumb
 
 HIST = "history.json"
+QDIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "queue")
+
+
+def next_queued(hist):
+    """Volgend verhaal uit de wachtrij (sleepstories/queue/*.txt, op bestandsnaam) dat nog niet is gebruikt."""
+    used = {v.get("queue_file") for v in hist["videos"]}
+    for f in sorted(glob.glob(os.path.join(QDIR, "*.txt"))):
+        if os.path.basename(f) not in used:
+            return f
+    return None
 
 
 def load_hist():
@@ -37,8 +47,18 @@ def main():
         print("Vandaag is er al een video gemaakt; stop."); return
     work = a.work; shutil.rmtree(work, ignore_errors=True); os.makedirs(work)
 
+    qf = None
     if a.story_file: story = json.load(open(a.story_file))
-    else: story = S.write_story([v["title"] for v in hist["videos"]], [v.get("place", "") for v in hist["videos"][-20:]])
+    else:
+        qf = next_queued(hist)
+        if qf:
+            story = S.parse(open(qf, encoding="utf-8").read()); story["place"] = story["title"]
+            iss = S.problems(story); print(f"[main] verhaal uit wachtrij: {os.path.basename(qf)} ({S.words(story)} woorden) problemen={iss}", flush=True)
+            if iss: sys.exit("Wachtrij-verhaal voldoet niet: " + "; ".join(iss))
+        else:
+            try: story = S.write_story([v["title"] for v in hist["videos"]], [v.get("place", "") for v in hist["videos"][-20:]])
+            except Exception as e:
+                print(f"::warning::Wachtrij is leeg en het schrijven met de API mislukte ({str(e)[:120]}). Er is vandaag geen video gemaakt; nieuwe verhalen toevoegen aan sleepstories/queue/.", flush=True); return
     json.dump(story, open(os.path.join(work, "story.json"), "w"), indent=1)
     title = story["title"]
     full_title = f"{title} | {({'45': '45 Minute', '60': '1 Hour'}.get(os.environ.get('LONG_MINUTES', '0'), 'Calm'))} Sleep Story for Deep Sleep (Soft Voice, Gentle Music)"
@@ -67,7 +87,7 @@ def main():
         print("[main] dry-run: niet geupload"); return
     from . import upload
     vid, real = upload.upload(final, thumbp, full_title, desc, tags, a.mode)
-    hist["videos"].append({"date": today, "title": title, "video_id": vid, "place": story.get("place", ""),
+    hist["videos"].append({"date": today, "title": title, "video_id": vid, "place": story.get("place", ""), "queue_file": os.path.basename(qf) if qf else None,
                            "privacy": real.get("privacyStatus"), "publishAt": real.get("publishAt")})
     hist["clip_ids"] = (hist["clip_ids"] + [c[3] for ch in clips for c in ch])[-1500:]
     json.dump(hist, open(HIST, "w"), indent=1)
